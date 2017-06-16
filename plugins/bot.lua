@@ -20,28 +20,29 @@ end
 
 local function run(msg, matches)
 --------------------------------------------------
-if msg.text and is_sudo(msg) and not redis:get(main) then
-return false
-end
+
 --------------------------------------------------
 --TAG
 local tag = matches[2]
-local hash = "tag:"..msg.from.id
 local sendpm = 92635028
 if matches[1] == "تنظیم تگ" and is_sudo(msg) then
-redis:set(hash, tag)
+local chat = msg.from.id
+redis:set("tag:"..chat, tag)
 return "تگ جدید با موفقیت ثبت شد"
 end
 if matches[1] == "تگ" and is_sudo(msg) then
-if redis:get(hash) then
-return "تگ فعلی : "..tag
+local chat = msg.from.id
+if redis:get("tag:"..chat) then
+local tag2 = redis:get("tag:"..chat)
+return "تگ فعلی : "..tag2
 else
 return "شما هنوز هیچ تگی تنظیم نکرده اید !"
 end
 end
 if matches[1] == "حذف تگ" and is_sudo(msg) then
-if redis:get(hash) then
-redis:del(hash)
+local chat = msg.from.id
+if redis:get("tag:"..chat) then
+redis:del("tag:"..chat)
 return "تگ با موفقیت حذف شد !"
 else
 return "شما هنوز هیچ تگی تنظیم نکرده اید !"
@@ -50,15 +51,15 @@ end
 --REALM
 if matches[1] == "تنظیم گروه" and is_sudo(msg) then
 local realm = msg.to.id
-local main = "realm"
-redis:set(main, msg.to.id)
+redis:set("realm", realm)
 return "گروه مدیریتی جدید با موفقبت شد !"
 end
 --SET JOIN
 if matches[1] == "جوین" and is_sudo(msg) then
 if matches[2] == "روشن" then
-if not redis:get("joinchat") then
-redis:set("joincht", true)
+local join = redis:get("joinchat")
+if not join then
+redis:set("joinchat", true)
 return "جوین اتوماتیک داخل گروه ها روشن شد !"
 else
 return "جوین اتوماتیک داخل گروه ها از قبل روشن بوده است !"
@@ -81,9 +82,9 @@ return "جوین اتوماتیک خاموش است !"
 end
 end
 --JOIN AND SEND
-if msg.text:match("https://t.me/joinchat/%S+") or msg.text:match("https://telegram.me/joinchat/%S+") or text:match("https://telegram.dog/joinchat/%S+") then
+if msg.text:match("https://t.me/joinchat/%S+") or msg.text:match("https://telegram.me/joinchat/%S+") or msg.text:match("https://telegram.dog/joinchat/%S+") then
 if redis:get("joinchat") then
-if redis:get(main) then
+if redis:get("realm") then
 local joinchat = parsed_url(matches[1])   
 join = import_chat_link(joinchat,ok_cb,false)
 if is_sudo(msg) then
@@ -91,7 +92,7 @@ return "جوین شدم !"
 else
 return true
 end
-local realm = redis:get(main)
+local realm = redis:get("realm")
 local pm = msg.text
 send_large_msg("chat#id"..realm or "channel#id"..realm, pm)
 else
@@ -119,6 +120,16 @@ reload_plugins(true)
 return 'کاربر'..matches[2]..'با موفقیت از مدیریت ربات حذف شد'
 end
 end
+--ECHO
+if matches[1] == "بگو" and is_sudo(msg) then
+local chat = msg.from.id
+local tag2 = redis:get("tag:"..chat)
+if tag2 then
+return matches[2].."\n----------------\n"..tag2
+else
+return matches[2]
+end
+end
 end
 --END 50%
 return {
@@ -129,6 +140,7 @@ return {
 	"^[.](حذف تگ)$",
 	"^[.](تگ)$",
 	"^[.](تنظیم تگ) (.*)$",
+	"^[.](بگو) (.*)$",
 	"^[.](تنظیم مدیر)$",
 	"^[.](تنظیم مدیر) (%d+)$",
 	"^[.](حذف مدیر) (%d+)$",
